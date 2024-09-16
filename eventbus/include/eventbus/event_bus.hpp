@@ -5,6 +5,7 @@
 #include <functional>
 #include <mutex>
 #include <shared_mutex>
+#include <system_error>
 #include <thread>
 #include <typeindex>
 #include <unordered_map>
