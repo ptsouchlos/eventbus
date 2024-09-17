@@ -22,7 +22,7 @@ target_link_libraries(${PROJECT_NAME} INTERFACE project_options Threads::Threads
 
 if(EVENTBUS_BUILD_TESTS)
     file(GLOB_RECURSE project_test_sources CONFIGURE_DEPENDS test/*.cpp)
-    set(project_test_name ${PROJECT_NAME}.tests)
+    set(project_test_name ${PROJECT_NAME}-tests)
     add_executable(${project_test_name} ${project_test_sources})
     target_link_libraries(${project_test_name}
         PUBLIC

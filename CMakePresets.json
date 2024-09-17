@@ -18,7 +18,9 @@
                 }
             },
             "cacheVariables": {
-                "EVENTBUS_BUILD_TESTS": "ON"
+                "EVENTBUS_BUILD_TESTS": "ON",
+                "EVENTBUS_BUILD_EXAMPLES": "ON",
+                "EVENTBUS_BUILD_BENCHMARKS": "ON"
             }
         },
         {
