@@ -1,6 +1,10 @@
 name: Ubuntu
 
-on: [push]
+on:
+  push:
+    branches: [ develop, main]
+  pull_request:
+    branches: [ develop, main ]
 
 env:
   CTEST_OUTPUT_ON_FAILURE: 1
@@ -20,7 +24,9 @@ jobs:
           - os: ubuntu-22.04
             version: 12
           - os: ubuntu-20.04
-            version: [7, 8]
+            version: 7
+          - os: ubuntu-20.04
+            version: 8
     env:
       CPP_STANDARD: ${{ matrix.cpp }}
     steps:
