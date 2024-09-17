@@ -53,3 +53,54 @@ jobs:
       run: |
         cd build
         ctest --build-config Debug
+  build-clang:
+    runs-on: ${{matrix.os}}
+    name: ${{ matrix.os}} clang${{ matrix.version }} C++${{ matrix.cpp }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04]
+        cpp: [17]
+        version: [14, 15, 16, 17]
+        include:
+          - os: ubuntu-22.04
+            version: 18
+    env:
+      CPP_STANDARD: ${{ matrix.cpp }}
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: actions/cache@v3
+      with:
+        path: "**/cpm_modules"
+        key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+
+    # clang needs GCC
+    - name: set up GCC
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: 11
+        platform: x64
+
+    - name: Install libs
+      run: |
+        sudo apt-get update
+        sudo apt-get install build-essential -y
+      
+    - name: Set up Clang
+      run: |
+        wget -O llvm.sh https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh ${{matrix.version}}
+    
+    - name: Configure
+      run: cmake -S . -B build
+
+    - name: Build
+      run: cmake --build build --config Debug -j4
+
+    - name: Run tests
+      run: |
+        cd build
+        ctest --build-config Debug
