@@ -96,6 +96,9 @@ jobs:
     
     - name: Configure
       run: cmake -S . -B build
+      env:
+          CC: clang-${{matrix.version}}
+          CXX: clang++-${{matrix.version}}
 
     - name: Build
       run: cmake --build build --config Debug -j4
