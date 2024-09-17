@@ -1,8 +1,10 @@
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include <atomic>
 #include <eventbus/event_bus.hpp>
+#include <iostream>
 #include <thread>
+#include <algorithm>
 
 struct test_event_type {
     int id{-1};
@@ -28,7 +30,7 @@ void free_function_callback(const test_event_type& type_event) {
     std::cout << "Free function callback : " << type_event << "\n";
 }
 
-TEST(EventBus, LambdaRegistrationAndDeregistration) {
+TEST_CASE("lambda registration and de-registration") {
     dp::event_bus evt_bus;
     event_handler_counter counter;
     auto registration =
@@ -39,41 +41,41 @@ TEST(EventBus, LambdaRegistrationAndDeregistration) {
         evt_bus.register_handler<test_event_type>([]() { std::cout << "Lambda 1\n"; });
     const auto lambda_two_reg =
         evt_bus.register_handler<test_event_type>([&test_event](const test_event_type& evt) {
-            EXPECT_EQ(evt.id, test_event.id);
-            EXPECT_EQ(evt.event_message, test_event.event_message);
-            EXPECT_EQ(evt.data_value, test_event.data_value);
+            CHECK_EQ(evt.id, test_event.id);
+            CHECK_EQ(evt.event_message, test_event.event_message);
+            CHECK_EQ(evt.data_value, test_event.data_value);
         });
 
     const auto lambda_three_reg = evt_bus.register_handler<test_event_type>(
         [](test_event_type) { std::cout << "Lambda 3 take by copy.\n"; });
 
     // should be 4 because we register a handler in the test fixture SetUp
-    ASSERT_EQ(evt_bus.handler_count(), 4);
+    REQUIRE_EQ(evt_bus.handler_count(), 4);
     evt_bus.fire_event(test_event);
-    EXPECT_EQ(counter.get_count(), 1);
+    CHECK_EQ(counter.get_count(), 1);
     evt_bus.fire_event(test_event);
-    EXPECT_EQ(counter.get_count(), 2);
+    CHECK_EQ(counter.get_count(), 2);
 
     evt_bus.remove_handler(lambda_one_reg);
 
     evt_bus.fire_event(test_event);
-    EXPECT_EQ(counter.get_count(), 3);
-    EXPECT_EQ(evt_bus.handler_count(), 3);
+    CHECK_EQ(counter.get_count(), 3);
+    CHECK_EQ(evt_bus.handler_count(), 3);
 
     evt_bus.remove_handler(lambda_two_reg);
 
     evt_bus.fire_event(test_event);
-    EXPECT_EQ(counter.get_count(), 4);
-    EXPECT_EQ(evt_bus.handler_count(), 2);
+    CHECK_EQ(counter.get_count(), 4);
+    CHECK_EQ(evt_bus.handler_count(), 2);
 
     evt_bus.remove_handler(lambda_three_reg);
 
     evt_bus.fire_event(test_event);
-    EXPECT_EQ(counter.get_count(), 5);
-    EXPECT_EQ(evt_bus.handler_count(), 1);
+    CHECK_EQ(counter.get_count(), 5);
+    CHECK_EQ(evt_bus.handler_count(), 1);
 }
 
-TEST(EventBus, DeregisterWhileDispatching) {
+TEST_CASE("deregister while dispatching") {
     dp::event_bus evt_bus;
     event_handler_counter counter;
     auto registration =
@@ -106,18 +108,18 @@ TEST(EventBus, DeregisterWhileDispatching) {
     for (auto i = 0; i < 40; ++i) {
         evt_bus.fire_event(test_event_type{3, "test event", 3.4});
         // add 1 because of the test fixture.
-        EXPECT_EQ(evt_bus.handler_count(), listeners.size() + 1);
+        CHECK_EQ(evt_bus.handler_count(), listeners.size() + 1);
     }
 
     // remove all the registrations
     for (auto& reg : registrations) {
-        EXPECT_TRUE(evt_bus.remove_handler(reg));
+        CHECK(evt_bus.remove_handler(reg));
     }
 
-    EXPECT_EQ(evt_bus.handler_count(), 1);
+    CHECK_EQ(evt_bus.handler_count(), 1);
 }
 
-TEST(EventBus, MultiThreaded) {
+TEST_CASE("multi-threaded event dispatch") {
     class simple_listener {
         int index_;
 
@@ -158,12 +160,12 @@ TEST(EventBus, MultiThreaded) {
     thread_two.join();
 
     // include the event counter
-    EXPECT_EQ(evt_bus.handler_count(), 3);
+    CHECK_EQ(evt_bus.handler_count(), 3);
 
-    EXPECT_EQ(event_counter.get_count(), 10);
+    CHECK_EQ(event_counter.get_count(), 10);
 }
 
-TEST(EventBus, AutoDeregisterInDtor) {
+TEST_CASE("auto de-register in destructor") {
     dp::event_bus evt_bus;
     event_handler_counter counter;
     {
@@ -171,9 +173,9 @@ TEST(EventBus, AutoDeregisterInDtor) {
             &counter, &event_handler_counter::on_test_event);
     }
 
-    EXPECT_EQ(evt_bus.handler_count(), 0);
+    CHECK_EQ(evt_bus.handler_count(), 0);
     evt_bus.fire_event(test_event_type{});
     evt_bus.fire_event(test_event_type{});
     evt_bus.fire_event(test_event_type{});
-    EXPECT_EQ(counter.get_count(), 0);
+    CHECK_EQ(counter.get_count(), 0);
 }
