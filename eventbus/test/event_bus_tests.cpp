@@ -4,6 +4,7 @@
 #include <eventbus/event_bus.hpp>
 #include <iostream>
 #include <thread>
+#include <algorithm>
 
 struct test_event_type {
     int id{-1};
