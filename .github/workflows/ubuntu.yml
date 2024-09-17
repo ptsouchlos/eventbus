@@ -6,20 +6,34 @@ env:
   CTEST_OUTPUT_ON_FAILURE: 1
 
 jobs:
-  build:
+  build-gcc:
     runs-on: ${{matrix.os}}
     name: ${{ matrix.os}} ${{ matrix.version }} C++${{ matrix.cpp }}
     strategy:
       fail-fast: false
       max-parallel: 4
       matrix:
-        os: [ubuntu-latest, ubuntu-20.04]
+        os: [ubuntu-20.04, ubuntu-22.04]
         cpp: [17]
-        version: [gcc7, gcc8, gcc9, clang]
+        version: [7, 8, 9, 10, 11]
+        include:
+          - os: ubuntu-22.04
+            version: 12
     env:
       CPP_STANDARD: ${{ matrix.cpp }}
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
+
+    - uses: actions/cache@v3
+      with:
+        path: "**/cpm_modules"
+        key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+
+    - name: set up GCC
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: ${{matrix.version}}
+        platform: x64
     
     - name: Configure
       run: cmake -S . -B build
