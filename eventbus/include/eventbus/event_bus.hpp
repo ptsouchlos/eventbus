@@ -1,6 +1,5 @@
 #pragma once
 
-#include <any>
 #include <atomic>
 #include <functional>
 #include <mutex>
@@ -11,6 +10,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "detail/any.hpp"
 #include "detail/function_traits.hpp"
 
 namespace dp {
@@ -194,8 +194,10 @@ namespace dp {
 
       private:
         using mutex_type = std::shared_mutex;
-        mutable mutex_type registration_mutex_;
-        std::unordered_multimap<std::type_index, std::function<void(std::any)>>
+        mutex_type registration_mutex_;
+        std::unordered_multimap<
+            std::type_index,
+            std::function<void(ext::any<32>)>>
             handler_registrations_;
 
         template <typename Callable>

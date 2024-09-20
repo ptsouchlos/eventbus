@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(eventbus)
 
-set(CXX_STANDARD 17)
+set(CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED ON)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -20,7 +20,7 @@ set_project_warnings(project_warnings)
 # set up options interface project to re-use
 add_library(project_options INTERFACE)
 # this project requires C++17
-target_compile_features(project_options INTERFACE cxx_std_17)
+target_compile_features(project_options INTERFACE cxx_std_20)
 
 if(EVENTBUS_BUILD_TESTS)
     CPMAddPackage(
