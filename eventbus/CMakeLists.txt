@@ -2,11 +2,6 @@ cmake_minimum_required(VERSION 3.14)
 
 project(eventbus)
 
-set(project_headers
-    include/eventbus/detail/function_traits.hpp
-    include/eventbus/event_bus.hpp
-)
-
 # System threading library 
 # Required for multithreading testing
 find_package(Threads REQUIRED)
