@@ -9,51 +9,77 @@
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 
 #include "detail/any.hpp"
 #include "detail/function_traits.hpp"
 
 namespace dp {
-    class event_bus;
+    struct default_event_bus_storage_policy {
+        using event_type = ext::any<32>;
+        using event_handler = std::function<void(event_type)>;
+    };
 
-    /**
-     * @brief A registration handle for a particular handler of an event type.
-     * @details This class is move constructible only. It also assumed that the lifespan of this
-     * object will be as long or shorter than that of the event bus. This class is move
-     * constructible for that reason, but there are still some cases where you can run into life
-     * time issues.
-     */
-    class handler_registration {
-        const void* handle_{nullptr};
-        dp::event_bus* event_bus_{nullptr};
-
-      public:
-        handler_registration(const handler_registration& other) = delete;
-        handler_registration(handler_registration&& other) noexcept;
-        handler_registration& operator=(const handler_registration& other) = delete;
-        handler_registration& operator=(handler_registration&& other) noexcept;
-        ~handler_registration();
-
-        /**
-         * @brief Pointer to the underlying handle.
-         */
-        [[nodiscard]] const void* handle() const;
-
-        /**
-         * @brief Unregister this handler from the event bus.
-         */
-        void unregister() noexcept;
-
-      protected:
-        handler_registration(const void* handle, dp::event_bus* bus);
-        friend class event_bus;
+    template <typename... EventTypes>
+    struct variant_event_bus_storage_policy {
+        using event_type = std::variant<EventTypes...>;
+        using event_handler = std::function<void(event_type)>;
     };
 
     /**
      * @brief A central event handler class that connects event handlers with the events.
      */
+    template <typename StoragePolicy = default_event_bus_storage_policy>
     class event_bus {
       public:
+        using event_type = typename StoragePolicy::event_type;
+        using event_handler = typename StoragePolicy::event_handler;
+
+        /**
+         * @brief A registration handle for a particular handler of an event type.
+         * @details This class is move constructible only. It also assumed that the lifespan of this
+         * object will be as long or shorter than that of the event bus. This class is move
+         * constructible for that reason, but there are still some cases where you can run into life
+         * time issues.
+         */
+        class handler_registration {
+            const void* handle_{nullptr};
+            dp::event_bus<StoragePolicy>* event_bus_{nullptr};
+
+          public:
+            handler_registration(const handler_registration& other) = delete;
+            handler_registration(handler_registration&& other) noexcept
+                : handle_(std::exchange(other.handle_, nullptr)),
+                  event_bus_(std::exchange(other.event_bus_, nullptr)) {}
+            handler_registration& operator=(const handler_registration& other) = delete;
+            handler_registration& operator=(handler_registration&& other) noexcept {
+                handle_ = std::exchange(other.handle_, nullptr);
+                event_bus_ = std::exchange(other.event_bus_, nullptr);
+                return *this;
+            }
+            ~handler_registration() { unregister(); }
+
+            /**
+             * @brief Pointer to the underlying handle.
+             */
+            [[nodiscard]] const void* handle() const { return handle_; }
+
+            /**
+             * @brief Unregister this handler from the event bus.
+             */
+            void unregister() noexcept {
+                if (event_bus_ && handle_) {
+                    event_bus_->remove_handler(*this);
+                    handle_ = nullptr;
+                }
+            }
+
+          protected:
+            handler_registration(const void* handle, dp::event_bus<StoragePolicy>* bus)
+                : handle_(handle), event_bus_(bus) {}
+            friend class event_bus;
+        };
+
         event_bus() = default;
 
         /**
@@ -195,10 +221,7 @@ namespace dp {
       private:
         using mutex_type = std::shared_mutex;
         mutex_type registration_mutex_;
-        std::unordered_multimap<
-            std::type_index,
-            std::function<void(ext::any<32>)>>
-            handler_registrations_;
+        std::unordered_multimap<std::type_index, event_handler> handler_registrations_;
 
         template <typename Callable>
         void safe_shared_registrations_access(Callable&& callable) {
@@ -219,29 +242,4 @@ namespace dp {
             }
         }
     };
-
-    inline const void* handler_registration::handle() const { return handle_; }
-
-    inline void handler_registration::unregister() noexcept {
-        if (event_bus_ && handle_) {
-            event_bus_->remove_handler(*this);
-            handle_ = nullptr;
-        }
-    }
-
-    inline handler_registration::handler_registration(const void* handle, dp::event_bus* bus)
-        : handle_(handle), event_bus_(bus) {}
-
-    inline handler_registration::handler_registration(handler_registration&& other) noexcept
-        : handle_(std::exchange(other.handle_, nullptr)),
-          event_bus_(std::exchange(other.event_bus_, nullptr)) {}
-
-    inline handler_registration& handler_registration::operator=(
-        handler_registration&& other) noexcept {
-        handle_ = std::exchange(other.handle_, nullptr);
-        event_bus_ = std::exchange(other.event_bus_, nullptr);
-        return *this;
-    }
-
-    inline handler_registration::~handler_registration() { unregister(); }
 }  // namespace dp

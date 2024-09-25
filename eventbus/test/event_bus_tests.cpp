@@ -1,10 +1,10 @@
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <atomic>
 #include <eventbus/event_bus.hpp>
 #include <iostream>
 #include <thread>
-#include <algorithm>
 
 struct test_event_type {
     int id{-1};
@@ -82,8 +82,10 @@ TEST_CASE("deregister while dispatching") {
         evt_bus.register_handler<test_event_type>(&counter, &event_handler_counter::on_test_event);
 
     struct deregister_while_dispatch_listener {
-        dp::event_bus* evt_bus{nullptr};
-        std::vector<dp::handler_registration>* registrations{nullptr};
+        using event_bus = dp::event_bus<>;
+        using handler_registration = event_bus::handler_registration;
+        event_bus* evt_bus{nullptr};
+        std::vector<handler_registration>* registrations{nullptr};
         void on_event(test_event_type) {
             if (evt_bus && registrations) {
                 std::for_each(registrations->begin(), registrations->end(),
@@ -92,7 +94,7 @@ TEST_CASE("deregister while dispatching") {
         }
     };
 
-    std::vector<dp::handler_registration> registrations;
+    std::vector<decltype(evt_bus)::handler_registration> registrations;
     std::vector<deregister_while_dispatch_listener> listeners;
     for (auto i = 0; i < 20; ++i) {
         deregister_while_dispatch_listener listener;
