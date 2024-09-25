@@ -25,7 +25,7 @@ class first_event_callback_object {
   public:
     first_event_callback_object() = default;
     void on_event_fired(const first_event&) { event_count_++; }
-    void on_third_event(){};
+    void on_third_event() {};
     [[nodiscard]] int get_event_count() const { return event_count_; }
 
   private:
@@ -34,14 +34,14 @@ class first_event_callback_object {
 
 class third_event_callback_object {
   public:
-    void on_third_event(){};
+    void on_third_event() {};
 };
 
 class internal_registration_class {
-    dp::handler_registration reg;
+    dp::event_bus<>::handler_registration reg;
 
   public:
-    internal_registration_class(dp::event_bus& bus)
+    internal_registration_class(dp::event_bus<>& bus)
         : reg(std::move(bus.register_handler<first_event>([](const first_event& evt) {
               std::cout << "test class: " << evt.message << "\n";
           }))) {}
