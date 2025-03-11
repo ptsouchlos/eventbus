@@ -1,10 +1,10 @@
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <atomic>
 #include <eventbus/event_bus.hpp>
 #include <iostream>
 #include <thread>
-#include <algorithm>
 
 struct test_event_type {
     int id{-1};
@@ -39,15 +39,14 @@ TEST_CASE("lambda registration and de-registration") {
     test_event_type test_event{1, "event message", 32.56};
     const auto lambda_one_reg =
         evt_bus.register_handler<test_event_type>([]() { std::cout << "Lambda 1\n"; });
-    const auto lambda_two_reg =
-        evt_bus.register_handler<test_event_type>([&test_event](const test_event_type& evt) {
-            CHECK_EQ(evt.id, test_event.id);
-            CHECK_EQ(evt.event_message, test_event.event_message);
-            CHECK_EQ(evt.data_value, test_event.data_value);
-        });
+    const auto lambda_two_reg = evt_bus.register_handler([&test_event](const test_event_type& evt) {
+        CHECK_EQ(evt.id, test_event.id);
+        CHECK_EQ(evt.event_message, test_event.event_message);
+        CHECK_EQ(evt.data_value, test_event.data_value);
+    });
 
-    const auto lambda_three_reg = evt_bus.register_handler<test_event_type>(
-        [](test_event_type) { std::cout << "Lambda 3 take by copy.\n"; });
+    const auto lambda_three_reg =
+        evt_bus.register_handler([](test_event_type) { std::cout << "Lambda 3 take by copy.\n"; });
 
     // should be 4 because we register a handler in the test fixture SetUp
     REQUIRE_EQ(evt_bus.handler_count(), 4);
@@ -96,8 +95,8 @@ TEST_CASE("deregister while dispatching") {
     std::vector<deregister_while_dispatch_listener> listeners;
     for (auto i = 0; i < 20; ++i) {
         deregister_while_dispatch_listener listener;
-        auto reg = evt_bus.register_handler<test_event_type>(
-            &listener, &deregister_while_dispatch_listener::on_event);
+        auto reg =
+            evt_bus.register_handler(&listener, &deregister_while_dispatch_listener::on_event);
         listeners.emplace_back(listener);
         registrations.emplace_back(std::move(reg));
     }
@@ -135,10 +134,8 @@ TEST_CASE("multi-threaded event dispatch") {
     simple_listener listener_one(1);
     simple_listener listener_two(2);
 
-    auto reg_one =
-        evt_bus.register_handler<test_event_type>(&listener_one, &simple_listener::on_event);
-    auto reg_two =
-        evt_bus.register_handler<test_event_type>(&listener_two, &simple_listener::on_event);
+    auto reg_one = evt_bus.register_handler(&listener_one, &simple_listener::on_event);
+    auto reg_two = evt_bus.register_handler(&listener_two, &simple_listener::on_event);
 
     event_handler_counter event_counter;
     auto event_handler_reg = evt_bus.register_handler<test_event_type>(
@@ -178,4 +175,58 @@ TEST_CASE("auto de-register in destructor") {
     evt_bus.fire_event(test_event_type{});
     evt_bus.fire_event(test_event_type{});
     CHECK_EQ(counter.get_count(), 0);
+}
+
+TEST_CASE("Ensure events are not unnecessarily copied") {
+    dp::event_bus evt_bus;
+    bool event_copied = false;
+
+    struct event_checker {
+        bool& event_copied;
+
+        event_checker& operator=(const event_checker&) {
+            event_copied = true;
+            return *this;
+        }
+        event_checker(const event_checker& other) : event_copied{other.event_copied} {
+            event_copied = true;
+        }
+        event_checker(bool& copied) : event_copied{copied} {}
+    };
+
+    event_checker checker{event_copied};
+
+    auto registration1 = evt_bus.register_handler([](const event_checker& evt) {});
+
+    auto registration2 = evt_bus.register_handler([](const event_checker& evt) {});
+
+    // l-value reference
+    evt_bus.fire_event(checker);
+    // r-value reference
+    evt_bus.fire_event(event_checker{event_copied});
+    CHECK_FALSE(event_copied);
+
+    {
+        // register a handler that expects a value type -- this will make a copy
+        auto registration3 = evt_bus.register_handler([](event_checker evt) {});
+
+        evt_bus.fire_event(checker);
+        CHECK(event_copied);
+
+        // register a handler that expects an r-value reference -- this will make a copy
+        auto registration4 = evt_bus.register_handler([](event_checker&& evt) {});
+        event_copied = false;
+
+        evt_bus.fire_event(checker);
+        CHECK(event_copied);
+    }
+    // deregister copying events
+
+    event_copied = false;
+
+    const event_checker const_checker{event_copied};
+
+    evt_bus.fire_event(const_checker);
+
+    CHECK_FALSE(event_copied);
 }
