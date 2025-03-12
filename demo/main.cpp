@@ -25,7 +25,7 @@ class first_event_callback_object {
   public:
     first_event_callback_object() = default;
     void on_event_fired(const first_event&) { event_count_++; }
-    void on_third_event(){};
+    void on_third_event() {};
     [[nodiscard]] int get_event_count() const { return event_count_; }
 
   private:
@@ -34,7 +34,7 @@ class first_event_callback_object {
 
 class third_event_callback_object {
   public:
-    void on_third_event(){};
+    void on_third_event() {};
 };
 
 class internal_registration_class {
@@ -42,7 +42,7 @@ class internal_registration_class {
 
   public:
     internal_registration_class(dp::event_bus& bus)
-        : reg(std::move(bus.register_handler<first_event>([](const first_event& evt) {
+        : reg(std::move(bus.register_handler([](const first_event& evt) {
               std::cout << "test class: " << evt.message << "\n";
           }))) {}
 };
@@ -52,8 +52,8 @@ int main() {
     event_bus evt_bus;
 
     // register free function
-    const auto reg = evt_bus.register_handler<first_event>(&free_function_event_handler);
-    const auto third_event_reg = evt_bus.register_handler<third_event>([](const third_event& evt) {
+    const auto reg = evt_bus.register_handler(&free_function_event_handler);
+    const auto third_event_reg = evt_bus.register_handler([](const third_event& evt) {
         std::cout << "my third event handler: " << evt.value << new_line;
     });
 
@@ -68,23 +68,20 @@ int main() {
     evt_bus.remove_handler(third_event_reg);
     evt_bus.fire_event(third_event{13.0});
 
-    const auto other_event_reg =
-        evt_bus.register_handler<second_event>([](const second_event& other_evt) {
-            std::cout << "first other event handler says: " << other_evt.message << std::endl;
-        });
-    const auto other_event_second_reg =
-        evt_bus.register_handler<second_event>([](const second_event& other_evt) {
-            std::cout << "second other event handler says: " << other_evt.id << " "
-                      << other_evt.message << std::endl;
-        });
-    const auto dmy_evt_first_reg =
-        evt_bus.register_handler<first_event>([](const first_event& dmy_evt) {
-            std::cout << "third event handler says: " << dmy_evt.message << std::endl;
-        });
+    const auto other_event_reg = evt_bus.register_handler([](const second_event& other_evt) {
+        std::cout << "first other event handler says: " << other_evt.message << std::endl;
+    });
+    const auto other_event_second_reg = evt_bus.register_handler([](const second_event& other_evt) {
+        std::cout << "second other event handler says: " << other_evt.id << " " << other_evt.message
+                  << std::endl;
+    });
+    const auto dmy_evt_first_reg = evt_bus.register_handler([](const first_event& dmy_evt) {
+        std::cout << "third event handler says: " << dmy_evt.message << std::endl;
+    });
 
     first_event_callback_object callback_obj;
-    const auto dmy_evt_pmr_reg = evt_bus.register_handler<first_event>(
-        &callback_obj, &first_event_callback_object::on_event_fired);
+    const auto dmy_evt_pmr_reg =
+        evt_bus.register_handler(&callback_obj, &first_event_callback_object::on_event_fired);
     const auto thrid_event_reg_pmr = evt_bus.register_handler<third_event>(
         &callback_obj, &first_event_callback_object::on_third_event);
 

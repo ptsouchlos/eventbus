@@ -32,12 +32,12 @@ namespace dp {
         handler_registration(handler_registration&& other) noexcept;
         handler_registration& operator=(const handler_registration& other) = delete;
         handler_registration& operator=(handler_registration&& other) noexcept;
-        ~handler_registration();
+        ~handler_registration() noexcept;
 
         /**
          * @brief Pointer to the underlying handle.
          */
-        [[nodiscard]] const void* handle() const;
+        [[nodiscard]] const void* handle() const noexcept;
 
         /**
          * @brief Unregister this handler from the event bus.
@@ -45,7 +45,7 @@ namespace dp {
         void unregister() noexcept;
 
       protected:
-        handler_registration(const void* handle, dp::event_bus* bus);
+        handler_registration(const void* handle, dp::event_bus* bus) noexcept;
         friend class event_bus;
     };
 
@@ -54,43 +54,37 @@ namespace dp {
      */
     class event_bus {
       public:
-        event_bus() = default;
+        /**
+         * @brief Register an event handler for a given event type.
+         * @tparam EventHandler The invocable event handler type.
+         * @param handler A callable handler of the event type. This invocation is designed for when
+         * `handler` takes the EventType as an argument.
+         * @return A handler_registration instance for the given handler.
+         */
+        template <typename EventHandler>
+        [[nodiscard]] auto register_handler(EventHandler&& handler) noexcept {
+            using EventType = typename detail::function_traits<EventHandler>::template arg<0>::type;
+
+            static_assert(std::is_invocable_v<EventHandler, EventType>,
+                          "EventHandler must be invocable with EventType as an argument.");
+
+            return register_handler_impl<EventType>(std::forward<EventHandler>(handler));
+        }
 
         /**
          * @brief Register an event handler for a given event type.
          * @tparam EventType The event type
          * @tparam EventHandler The invocable event handler type.
-         * @param handler A callable handler of the event type. Can accept the event as param or
-         * take no params.
+         * @param handler A callable handler of the event type. This invocation is used for when
+         * `handler` takes no parameters but wants to be fired when EventType is fired.
          * @return A handler_registration instance for the given handler.
          */
-        template <typename EventType, typename EventHandler,
-                  typename = std::enable_if_t<std::is_invocable_v<EventHandler> ||
-                                              std::is_invocable_v<EventHandler, EventType>>>
-        [[nodiscard]] handler_registration register_handler(EventHandler&& handler) {
-            using traits = detail::function_traits<EventHandler>;
-            const auto type_idx = std::type_index(typeid(EventType));
-            const void* handle;
-            // check if the function takes any arguments.
-            if constexpr (traits::arity == 0) {
-                safe_unique_registrations_access([&]() {
-                    auto it = handler_registrations_.emplace(
-                        type_idx,
-                        [handler = std::forward<EventHandler>(handler)](auto) { handler(); });
+        template <typename EventType, typename EventHandler>
+        [[nodiscard]] handler_registration register_handler(EventHandler&& handler) noexcept {
+            static_assert(std::is_invocable_v<EventHandler>,
+                          "EventHandler must be invocable with no arguments.");
 
-                    handle = static_cast<const void*>(&(it->second));
-                });
-            } else {
-                safe_unique_registrations_access([&]() {
-                    auto it = handler_registrations_.emplace(
-                        type_idx, [func = std::forward<EventHandler>(handler)](auto value) {
-                            func(std::any_cast<EventType>(value));
-                        });
-
-                    handle = static_cast<const void*>(&(it->second));
-                });
-            }
-            return {handle, this};
+            return register_handler_impl<EventType>(std::forward<EventHandler>(handler));
         }
 
         /**
@@ -99,38 +93,46 @@ namespace dp {
          * @tparam ClassType Event handler class
          * @tparam MemberFunction Event handler member function
          * @param class_instance Instance of ClassType that will handle the event.
-         * @param function Pointer to the MemberFunction of the ClassType.
+         * @param function Pointer to the MemberFunction of the ClassType. This invocation is for
+         * when `function` takes the EventType as an argument.
+         * @return A handler_registration instance for the given handler.
+         */
+        template <typename ClassType, typename MemberFunction>
+        [[nodiscard]] handler_registration register_handler(ClassType* class_instance,
+                                                            MemberFunction&& function) noexcept {
+            using EventType =
+                typename detail::function_traits<MemberFunction>::template arg<0>::type;
+
+            static_assert(
+                std::is_invocable_v<MemberFunction, ClassType*, EventType>,
+                "EventHandler must be a member function of ClassType and one EventType argument.");
+
+            return register_handler_impl<EventType>(
+                [class_instance, func = std::forward<MemberFunction>(function)](
+                    const EventType& event) { (class_instance->*func)(event); });
+        }
+
+        /**
+         * @brief Register an event handler for a given event type.
+         * @tparam EventType The event type
+         * @tparam ClassType Event handler class
+         * @tparam MemberFunction Event handler member function
+         * @param class_instance Instance of ClassType that will handle the event.
+         * @param function Pointer to the MemberFunction of the ClassType. This invocation is for
+         * when `function` takes no arguments but wants to be fired when EventType is fired.
          * @return A handler_registration instance for the given handler.
          */
         template <typename EventType, typename ClassType, typename MemberFunction>
         [[nodiscard]] handler_registration register_handler(ClassType* class_instance,
                                                             MemberFunction&& function) noexcept {
-            using traits = detail::function_traits<MemberFunction>;
-            static_assert(std::is_same_v<ClassType, std::decay_t<typename traits::owner_type>>,
-                          "Member function pointer must match instance type.");
+            static_assert(
+                std::is_invocable_v<MemberFunction, ClassType*>,
+                "EventHandler must be a member function of ClassType and take no arguments.");
 
-            const auto type_idx = std::type_index(typeid(EventType));
-            const void* handle;
-
-            if constexpr (traits::arity == 0) {
-                safe_unique_registrations_access([&]() {
-                    auto it = handler_registrations_.emplace(
-                        type_idx,
-                        [class_instance, function](auto) { (class_instance->*function)(); });
-
-                    handle = static_cast<const void*>(&(it->second));
+            return register_handler_impl<EventType>(
+                [class_instance, func = std::forward<MemberFunction>(function)]() {
+                    (class_instance->*func)();
                 });
-            } else {
-                safe_unique_registrations_access([&]() {
-                    auto it = handler_registrations_.emplace(
-                        type_idx, [class_instance, function](auto value) {
-                            (class_instance->*function)(std::any_cast<EventType>(value));
-                        });
-
-                    handle = static_cast<const void*>(&(it->second));
-                });
-            }
-            return {handle, this};
         }
 
         /**
@@ -139,13 +141,14 @@ namespace dp {
          * @param evt The event to pass to all event handlers.
          */
         template <typename EventType, typename = std::enable_if_t<!std::is_pointer_v<EventType>>>
-        void fire_event(EventType&& evt) noexcept {
-            safe_shared_registrations_access([this, local_event = std::forward<EventType>(evt)]() {
+        void fire_event(const EventType& evt) noexcept {
+            safe_shared_registrations_access([this, &evt]() {
                 // only call the functions we need to
                 for (auto [begin_evt_id, end_evt_id] =
                          handler_registrations_.equal_range(std::type_index(typeid(EventType)));
                      begin_evt_id != end_evt_id; ++begin_evt_id) {
-                    begin_evt_id->second(local_event);
+                    // call all handlers by passing a std::reference_wrapper<const EventType>
+                    begin_evt_id->second(std::cref(evt));
                 }
             });
         }
@@ -199,26 +202,70 @@ namespace dp {
             handler_registrations_;
 
         template <typename Callable>
-        void safe_shared_registrations_access(Callable&& callable) {
+        void safe_shared_registrations_access(Callable&& callable) noexcept {
             try {
-                std::shared_lock<mutex_type> lock(registration_mutex_);
+                std::scoped_lock lock{registration_mutex_};
                 callable();
             } catch (std::system_error&) {
             }
         }
+
         template <typename Callable>
-        void safe_unique_registrations_access(Callable&& callable) {
+        void safe_unique_registrations_access(Callable&& callable) noexcept {
             try {
                 // if this fails, an exception may be thrown.
-                std::unique_lock<mutex_type> lock(registration_mutex_);
+                std::scoped_lock lock{registration_mutex_};
                 callable();
             } catch (std::system_error&) {
                 // do nothing
             }
         }
+
+        // Helper function which drastically cleans up the template parameterization requirements of
+        // the users of this library. EventType is now deduced from the handler function directly
+        // unless it takes no arguments.
+        template <typename EventType, typename EventHandler>
+        [[nodiscard]] handler_registration register_handler_impl(EventHandler&& handler) noexcept {
+            using traits = detail::function_traits<EventHandler>;
+            using RawParameterType = std::remove_cv_t<std::remove_reference_t<EventType>>;
+
+            const auto type_idx = std::type_index(typeid(RawParameterType));
+            const void* handle;
+
+            // check if the function takes any arguments.
+            if constexpr (traits::arity == 0) {
+                safe_unique_registrations_access([&]() {
+                    auto it = handler_registrations_.emplace(
+                        type_idx,
+                        [func = std::forward<EventHandler>(handler)](std::any&&) { func(); });
+
+                    handle = static_cast<const void*>(&(it->second));
+                });
+            } else {
+                safe_unique_registrations_access([&]() {
+                    auto it = handler_registrations_.emplace(
+                        type_idx, [func = std::forward<EventHandler>(handler)](std::any&& value) {
+                            std::reference_wrapper<const RawParameterType> local_event =
+                                std::any_cast<std::reference_wrapper<const RawParameterType>>(
+                                    std::move(value));
+
+                            if constexpr (std::is_rvalue_reference_v<EventType>) {
+                                static_assert(std::is_copy_constructible_v<RawParameterType>,
+                                              "Event type must be copy constructible.");
+                                func(RawParameterType(local_event.get()));
+                            } else {
+                                func(local_event);
+                            }
+                        });
+
+                    handle = static_cast<const void*>(&(it->second));
+                });
+            }
+            return {handle, this};
+        }
     };
 
-    inline const void* handler_registration::handle() const { return handle_; }
+    inline const void* handler_registration::handle() const noexcept { return handle_; }
 
     inline void handler_registration::unregister() noexcept {
         if (event_bus_ && handle_) {
@@ -227,7 +274,8 @@ namespace dp {
         }
     }
 
-    inline handler_registration::handler_registration(const void* handle, dp::event_bus* bus)
+    inline handler_registration::handler_registration(const void* handle,
+                                                      dp::event_bus* bus) noexcept
         : handle_(handle), event_bus_(bus) {}
 
     inline handler_registration::handler_registration(handler_registration&& other) noexcept
@@ -241,5 +289,5 @@ namespace dp {
         return *this;
     }
 
-    inline handler_registration::~handler_registration() { unregister(); }
+    inline handler_registration::~handler_registration() noexcept { unregister(); }
 }  // namespace dp
