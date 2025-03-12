@@ -3,7 +3,6 @@
 
 #include <chrono>
 #include <eventbus/event_bus.hpp>
-#include <eventbus/event_bus_with_variant.hpp>
 #include <string>
 #include <vector>
 
@@ -47,7 +46,8 @@ TEST_CASE("event dispatch with eventbus using std::any") {
         });
 
         bench.run("event_bus_with_variant", [dispatch_count] {
-            dp::event_bus_with_variant<event, event2> bus{};
+            using storage_policy = dp::variant_event_bus_storage_policy<event, event2>;
+            dp::event_bus<storage_policy> bus{};
             auto registration1 = bus.register_handler<event>([] {});
             auto registration2 = bus.register_handler<event2>([] {});
             ankerl::nanobench::doNotOptimizeAway(registration1);
