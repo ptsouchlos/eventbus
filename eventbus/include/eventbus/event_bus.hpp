@@ -16,7 +16,7 @@
 
 namespace dp {
     struct default_event_bus_storage_policy {
-        using event_type = ext::any<32>;
+        using event_type = ext::any<64>;
         using event_handler = std::function<void(event_type)>;
     };
 
@@ -109,8 +109,8 @@ namespace dp {
             } else {
                 safe_unique_registrations_access([&]() {
                     auto it = handler_registrations_.emplace(
-                        type_idx, [func = std::forward<EventHandler>(handler)](auto value) {
-                            func(std::any_cast<EventType>(value));
+                        type_idx, [func = std::forward<EventHandler>(handler)](auto&& value) {
+                            func(std::any_cast<EventType>(std::forward<decltype(value)>(value)));
                         });
 
                     handle = static_cast<const void*>(&(it->second));
@@ -149,13 +149,29 @@ namespace dp {
             } else {
                 safe_unique_registrations_access([&]() {
                     auto it = handler_registrations_.emplace(
-                        type_idx, [class_instance, function](auto value) {
-                            (class_instance->*function)(std::any_cast<EventType>(value));
+                        type_idx, [class_instance, function](auto&& value) {
+                            (class_instance->*function)(
+                                std::any_cast<EventType>(std::forward<decltype(value)>(value)));
                         });
-
                     handle = static_cast<const void*>(&(it->second));
                 });
             }
+            return {handle, this};
+        }
+
+        /**
+         * @brief Register a global event handler that will be called for all events.
+         */
+        template <typename EventHandler>
+        [[nodiscard]] handler_registration register_global_handler(EventHandler&& handler) {
+            const void* handle;
+
+            safe_unique_registrations_access([&]() {
+                auto it = global_handlers_.emplace(global_handlers_.end(),
+                                                   std::forward<EventHandler>(handler));
+                handle = static_cast<const void*>(&(it));
+            });
+
             return {handle, this};
         }
 
@@ -172,6 +188,11 @@ namespace dp {
                          handler_registrations_.equal_range(std::type_index(typeid(EventType)));
                      begin_evt_id != end_evt_id; ++begin_evt_id) {
                     begin_evt_id->second(local_event);
+                }
+
+                // Call all the registered global handlers
+                for (auto& handler : global_handlers_) {
+                    handler(local_event);
                 }
             });
         }
@@ -222,6 +243,7 @@ namespace dp {
         using mutex_type = std::shared_mutex;
         mutex_type registration_mutex_;
         std::unordered_multimap<std::type_index, event_handler> handler_registrations_;
+        std::vector<event_handler> global_handlers_;
 
         template <typename Callable>
         void safe_shared_registrations_access(Callable&& callable) {
