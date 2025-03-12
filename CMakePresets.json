@@ -2,11 +2,22 @@
     "version": 3,
     "configurePresets": [
         {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "cacheVariables": {
+                "EVENTBUS_BUILD_TESTS": "ON",
+                "EVENTBUS_BUILD_EXAMPLES": "ON",
+                "EVENTBUS_BUILD_BENCHMARKS": "ON"
+            }
+        },
+        {
             "name": "linux-base",
             "hidden": true,
             "description": "Target the Windows Subsystem for Linux (WSL) or a remote Linux system.",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "inherits": "base",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
@@ -16,24 +27,13 @@
                 "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
                     "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
                 }
-            },
-            "cacheVariables": {
-                "EVENTBUS_BUILD_TESTS": "ON",
-                "EVENTBUS_BUILD_EXAMPLES": "ON",
-                "EVENTBUS_BUILD_BENCHMARKS": "ON"
             }
         },
         {
             "name": "windows-base",
             "description": "Target Windows with the Visual Studio development environment.",
             "hidden": true,
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/out/build/${presetName}",
-            "installDir": "${sourceDir}/out/install/${presetName}",
-            "cacheVariables": {
-                "CMAKE_CXX_COMPILER": "cl",
-                "CMAKE_C_COMPILER": "cl"
-            },
+            "inherits": "base",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
@@ -116,6 +116,8 @@
                 "strategy": "external"
             },
             "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "cl",
+                "CMAKE_C_COMPILER": "cl",
                 "CMAKE_BUILD_TYPE": "Debug"
             }
         },
@@ -146,6 +148,8 @@
             "description": "Target Windows (64-bit) with the Visual Studio development environment. (Release)",
             "inherits": "x64-debug",
             "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "cl",
+                "CMAKE_C_COMPILER": "cl",
                 "CMAKE_BUILD_TYPE": "Release"
             }
         },
@@ -155,6 +159,8 @@
             "description": "Target Windows (64-bit) with the Visual Studio development environment. (RelWithDebInfo)",
             "inherits": "x64-debug",
             "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "cl",
+                "CMAKE_C_COMPILER": "cl",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         }
