@@ -22,7 +22,7 @@ namespace {
         if constexpr (dp::detail::is_any<Event>::value) {
             return std::any_cast<std::reference_wrapper<const RawParameterType>>(value);
         } else {
-            return std::cref(std::get<RawParameterType>(value));
+            return std::get<std::reference_wrapper<const RawParameterType>>(value);
         }
     }
 }  // namespace
@@ -284,7 +284,7 @@ namespace dp {
                         type_idx, [func = std::forward<EventHandler>(handler)](event_type&& value) {
                             std::reference_wrapper<const RawParameterType> local_event =
                                 ::access_event_value<event_type, RawParameterType>(
-                                    std::move(value));
+                                    std::forward<event_type>(value));
 
                             // Check if the event type is an rvalue reference and handle accordingly
                             if constexpr (std::is_rvalue_reference_v<EventType>) {

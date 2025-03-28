@@ -12,7 +12,7 @@ namespace dp::detail {
 
     template <typename... EventTypes>
     struct variant_event_bus_storage_policy {
-        using event_type = std::variant<EventTypes...>;
+        using event_type = std::variant<std::reference_wrapper<const EventTypes>...>;
         using event_handler = std::function<void(event_type)>;
     };
 }  // namespace dp::detail
