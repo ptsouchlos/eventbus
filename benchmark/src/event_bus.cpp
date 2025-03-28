@@ -8,7 +8,7 @@
 
 TEST_CASE("event dispatch - std::any vs std::variant") {
     // This test compares the performance of event dispatching using std::any and std::variant
-    std::vector<std::size_t> args = {1'000, 10'000, 100'000, 1'000'000};
+    std::vector<std::size_t> args = {1'000, 10'000, 100'000};
 
     using namespace std::chrono_literals;
     for (const auto& dispatch_count : args) {
@@ -27,6 +27,11 @@ TEST_CASE("event dispatch - std::any vs std::variant") {
 
         struct event2 {
             int data_int;
+        };
+
+        struct allocating_event {
+            std::vector<std::byte> data;
+            allocating_event() : data(8, std::byte{0}) {}  // 8 bytes
         };
 
         bench.run("std::any", [dispatch_count]() {
@@ -54,6 +59,47 @@ TEST_CASE("event dispatch - std::any vs std::variant") {
             for (std::size_t i = 0; i < dispatch_count; ++i) {
                 bus.fire_event(event{});
                 bus.fire_event(event2{});
+            }
+        });
+    }
+}
+
+TEST_CASE("event dispatch - std::any vs std::variant with allocating event") {
+    // This test compares the performance of event dispatching using std::any and std::variant
+    std::vector<std::size_t> args = {1'000, 10'000};
+
+    using namespace std::chrono_literals;
+    for (const auto& dispatch_count : args) {
+        ankerl::nanobench::Bench bench;
+        auto bench_title =
+            std::string("event dispatch - " + std::to_string(dispatch_count) + " times");
+        bench.title(bench_title).relative(true).warmup(100).minEpochIterations(1000);
+        bench.timeUnit(1us, "us");
+
+        struct allocating_event {
+            std::vector<std::byte> data;
+            allocating_event() : data(8, std::byte{0}) {}  // 8 bytes
+        };
+
+        bench.run("std::any", [dispatch_count]() {
+            dp::event_bus bus{};
+
+            auto registration1 = bus.register_handler<allocating_event>([] {});
+            ankerl::nanobench::doNotOptimizeAway(registration1);
+
+            for (std::size_t i = 0; i < dispatch_count; ++i) {
+                bus.fire_event(allocating_event{});
+            }
+        });
+
+        bench.run("std::variant", [dispatch_count]() {
+            auto bus = dp::make_event_bus_for_types<allocating_event>();
+
+            auto registration1 = bus.register_handler<allocating_event>([] {});
+            ankerl::nanobench::doNotOptimizeAway(registration1);
+
+            for (std::size_t i = 0; i < dispatch_count; ++i) {
+                bus.fire_event(allocating_event{});
             }
         });
     }
