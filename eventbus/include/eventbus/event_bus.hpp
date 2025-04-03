@@ -52,6 +52,10 @@ namespace dp {
                   event_bus_(std::exchange(other.event_bus_, nullptr)) {}
 
             handler_registration& operator=(handler_registration&& other) noexcept {
+                if(this == &other) {
+                    return *this;
+                }
+                
                 handle_ = std::exchange(other.handle_, nullptr);
                 event_bus_ = std::exchange(other.event_bus_, nullptr);
                 return *this;
