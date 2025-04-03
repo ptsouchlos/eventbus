@@ -4,6 +4,8 @@ project(eventbus)
 
 set(project_headers
     include/eventbus/detail/function_traits.hpp
+    include/eventbus/detail/storage_policy.hpp
+    include/eventbus/detail/value_traits.hpp
     include/eventbus/event_bus.hpp
 )
 
