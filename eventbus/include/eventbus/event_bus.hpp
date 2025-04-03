@@ -32,8 +32,8 @@ namespace dp {
     /**
      * @brief A central event handler class that connects event handlers with the events.
      */
-    template <typename StoragePolicy = default_event_bus_storage_policy>
-    class event_bus_impl {
+    template <typename... EventTypes>
+    class event_bus {
       public:
         /**
          * @brief A registration handle for a particular handler of an event type.
@@ -44,7 +44,7 @@ namespace dp {
          */
         class handler_registration {
             const void* handle_{nullptr};
-            dp::event_bus_impl<StoragePolicy>* event_bus_{nullptr};
+            dp::event_bus<EventTypes...>* event_bus_{nullptr};
 
           public:
             handler_registration(handler_registration&& other) noexcept
@@ -52,10 +52,10 @@ namespace dp {
                   event_bus_(std::exchange(other.event_bus_, nullptr)) {}
 
             handler_registration& operator=(handler_registration&& other) noexcept {
-                if(this == &other) {
+                if (this == &other) {
                     return *this;
                 }
-                
+
                 handle_ = std::exchange(other.handle_, nullptr);
                 event_bus_ = std::exchange(other.event_bus_, nullptr);
                 return *this;
@@ -80,18 +80,22 @@ namespace dp {
             }
 
           protected:
-            handler_registration(const void* handle,
-                                 dp::event_bus_impl<StoragePolicy>* bus) noexcept
+            handler_registration(const void* handle, dp::event_bus<EventTypes...>* bus) noexcept
                 : handle_(handle), event_bus_(bus) {}
-            friend class event_bus_impl;
+            friend class event_bus;
         };
 
         /// @brief Public type aliases
         /// @{
+        using StoragePolicy =
+            std::conditional_t<sizeof...(EventTypes) == 0, detail::any_event_bus_storage_policy,
+                               detail::variant_event_bus_storage_policy<EventTypes...>>;
         using event_type = typename StoragePolicy::event_type;
         using event_handler = typename StoragePolicy::event_handler;
-        using handler_registration = typename event_bus_impl::handler_registration;
+        using handler_registration = typename event_bus::handler_registration;
         /// @}
+
+        event_bus() = default;
 
         /**
          * @brief Register an event handler for a given event type.
@@ -307,21 +311,9 @@ namespace dp {
         }
     };
 
-    using handler_registration = event_bus_impl<>::handler_registration;
+    /// @brief CTAD guide for dp::event_bus
+    template <typename T = void>
+    event_bus() -> event_bus<>;
 
-    /**
-     * @brief Default event_bus implementation uses the default storage policy.
-     */
-    using event_bus = event_bus_impl<default_event_bus_storage_policy>;
-
-    /**
-     * @brief Create an event bus for a given set of event types.
-     * @tparam Events The event types to be used with the event bus.
-     * @return An instance of event_bus_impl using the std::variant storage policy.
-     */
-    template <typename... Events>
-    auto make_event_bus_for_types()
-        -> event_bus_impl<detail::variant_event_bus_storage_policy<Events...>> {
-        return dp::event_bus_impl<detail::variant_event_bus_storage_policy<Events...>>();
-    }
+    using handler_registration = event_bus<>::handler_registration;
 }  // namespace dp
