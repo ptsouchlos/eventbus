@@ -82,7 +82,8 @@ TEST_CASE("deregister while dispatching") {
         evt_bus.register_handler<test_event_type>(&counter, &event_handler_counter::on_test_event);
 
     struct deregister_while_dispatch_listener {
-        dp::event_bus* evt_bus{nullptr};
+        // CTAD not allowed in non-static struct members so we have to include the empty brackets
+        dp::event_bus<>* evt_bus{nullptr};
         std::vector<dp::handler_registration>* registrations{nullptr};
         void on_event(test_event_type) {
             if (evt_bus && registrations) {
@@ -244,7 +245,7 @@ TEST_CASE("event_bus_variant: multi-threaded event dispatch") {
         }
     };
 
-    auto evt_bus = dp::make_event_bus_for_types<test_event_type>();
+    dp::event_bus<test_event_type> evt_bus{};
 
     simple_listener listener_one(1);
     simple_listener listener_two(2);
@@ -289,7 +290,7 @@ TEST_CASE("event_bus_variant: basic multi-event support") {
         char character;
     };
 
-    auto evt_bus = dp::make_event_bus_for_types<event1, event2, event3>();
+    dp::event_bus<event1, event2, event3> evt_bus{};
     event_handler_counter event_counter;
     auto event_handler_reg =
         evt_bus.register_handler<event1>(&event_counter, &event_handler_counter::on_test_event);

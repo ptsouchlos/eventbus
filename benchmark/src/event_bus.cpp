@@ -49,7 +49,7 @@ TEST_CASE("event dispatch - std::any vs std::variant") {
         });
 
         bench.run("std::variant", [dispatch_count]() {
-            auto bus = dp::make_event_bus_for_types<event, event2>();
+            dp::event_bus<event, event2> bus{};
 
             auto registration1 = bus.register_handler<event>([] {});
             auto registration2 = bus.register_handler<event2>([] {});
@@ -93,7 +93,7 @@ TEST_CASE("event dispatch - std::any vs std::variant with allocating event") {
         });
 
         bench.run("std::variant", [dispatch_count]() {
-            auto bus = dp::make_event_bus_for_types<allocating_event>();
+            dp::event_bus<allocating_event> bus{};
 
             auto registration1 = bus.register_handler<allocating_event>([] {});
             ankerl::nanobench::doNotOptimizeAway(registration1);

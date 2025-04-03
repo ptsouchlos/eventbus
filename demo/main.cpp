@@ -41,7 +41,8 @@ class internal_registration_class {
     dp::handler_registration reg;
 
   public:
-    internal_registration_class(dp::event_bus& bus)
+    /// CTAD not allowed in non-static struct member so we have to include the empty brackets
+    internal_registration_class(dp::event_bus<>& bus)
         : reg(std::move(bus.register_handler([](const first_event& evt) {
               std::cout << "test class: " << evt.message << "\n";
           }))) {}
