@@ -40,12 +40,25 @@
 - **RAII de-registrations** The handler registration objects automatically de-register the handler upon destruction.
 - **Thread safety** Multiple threads can fire events at once to the same `event_bus`. Handlers can also be registered from different threads.
   - **Note:** While the library can handle events fired from different threads note that the thread that fires the event is also the thread that the callback will run on. This library does not ensure that the callback is run on the thread it was registered on. This may or may not be the desired behavior especially in the context of something like thread pools.
+- **Multiple Storage Types** Choose to store event types in the bus either using `std::any` or `std::variant`.
 
 ## Usage
 
 The basic premise of the `event_bus` is that with it, you can:
-* Register handlers
-* Fire events that call the corresponding handlers
+
+- Register handlers
+- Fire events that call the corresponding handlers
+
+### Selecting Storage Type
+
+Selecting a storage type is as simple as instantiating the `event_bus`:
+
+```cpp
+dp::event_bus any_bus; // uses std::any
+dp::event_bus<event_t_1, event_t_2> variant_bus; // uses std::variant
+```
+
+Declaring the `event_bus` with no template arguments will default to using `std::any` as the storage type. If you want to use `std::variant` you must specify the event types you want to use.
 
 ### Define An Event Object
 
@@ -115,9 +128,10 @@ A complete example can be seen in the [demo](https://github.com/DeveloperPaul123
 ### CMake
 
 `eventbus` defines three CMake `INTERFACE` targets that can be used in your project:
-* `eventbus`
-* `eventbus::eventbus`
-* `dp::eventbus`
+
+- `eventbus`
+- `eventbus::eventbus`
+- `dp::eventbus`
 
 ````cmake
 find_package(dp::eventbus REQUIRED)
@@ -161,4 +175,4 @@ The project is licensed under the Apache License Version 2.0. See [LICENSE](LICE
 
 ## Contributors
 
-None yet, be the first!
+See [here](https://github.com/DeveloperPaul123/eventbus/graphs/contributors) for a list of contributors.
