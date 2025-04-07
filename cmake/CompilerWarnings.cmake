@@ -78,11 +78,15 @@ function(set_project_warnings project_name)
       -Wuseless-cast # warn if you perform a cast to the same type
   )
 
+  message("Using compiler: ${CMAKE_CXX_COMPILER_ID}")
   # clang can be used with visual studio directly and uses the cl like interface.
   if(MSVC AND NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
     set(PROJECT_WARNINGS ${MSVC_WARNINGS})
-  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
     set(PROJECT_WARNINGS ${CLANG_WARNINGS})
+  elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang")
+    list(REMOVE_ITEM ${CLANG_WARNINGS} -Wduplicated-cond)
+    set(PROJECT_WARNINGS ${CLANG_WARNINGS}) # AppleClang doesn't support -Wpedantic
   else()
     set(PROJECT_WARNINGS ${GCC_WARNINGS})
   endif()

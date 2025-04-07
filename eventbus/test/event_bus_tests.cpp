@@ -4,8 +4,9 @@
 #include <atomic>
 #include <eventbus/event_bus.hpp>
 #include <iostream>
+#include <optional>
+#include <sstream>
 #include <thread>
-
 struct test_event_type {
     int id{-1};
     std::string event_message;
@@ -81,7 +82,8 @@ TEST_CASE("deregister while dispatching") {
         evt_bus.register_handler<test_event_type>(&counter, &event_handler_counter::on_test_event);
 
     struct deregister_while_dispatch_listener {
-        dp::event_bus* evt_bus{nullptr};
+        // CTAD not allowed in non-static struct members so we have to include the empty brackets
+        dp::event_bus<>* evt_bus{nullptr};
         std::vector<dp::handler_registration>* registrations{nullptr};
         void on_event(test_event_type) {
             if (evt_bus && registrations) {
@@ -229,4 +231,102 @@ TEST_CASE("Ensure events are not unnecessarily copied") {
     evt_bus.fire_event(const_checker);
 
     CHECK_FALSE(event_copied);
+}
+
+TEST_CASE("event_bus_variant: multi-threaded event dispatch") {
+    class simple_listener {
+        int index_;
+
+      public:
+        explicit simple_listener(int index) : index_(index) {}
+        void on_event(const test_event_type& evt) const {
+            std::cout << "simple event: " << index_ << " " << evt.event_message << "\n";
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    };
+
+    dp::event_bus<test_event_type> evt_bus{};
+
+    simple_listener listener_one(1);
+    simple_listener listener_two(2);
+
+    auto reg_one = evt_bus.register_handler(&listener_one, &simple_listener::on_event);
+    auto reg_two = evt_bus.register_handler(&listener_two, &simple_listener::on_event);
+
+    event_handler_counter event_counter;
+    auto event_handler_reg = evt_bus.register_handler<test_event_type>(
+        &event_counter, &event_handler_counter::on_test_event);
+
+    auto thread_one = std::thread([&evt_bus, &listener_one]() {
+        for (auto i = 0; i < 5; ++i) {
+            evt_bus.fire_event(test_event_type{3, "thread_one", 1.0});
+        }
+    });
+
+    auto thread_two = std::thread([&evt_bus, &listener_two]() {
+        for (auto i = 0; i < 5; ++i) {
+            evt_bus.fire_event(test_event_type{3, "thread_two", 2.0});
+        }
+    });
+
+    thread_one.join();
+    thread_two.join();
+
+    // include the event counter
+    CHECK_EQ(evt_bus.handler_count(), 3);
+
+    CHECK_EQ(event_counter.get_count(), 10);
+}
+
+TEST_CASE("event_bus_variant: basic multi-event support") {
+    struct event1 {
+        int id;
+        std::string message;
+    };
+    struct event2 {
+        double value;
+    };
+    struct event3 {
+        char character;
+    };
+
+    dp::event_bus<event1, event2, event3> evt_bus{};
+    event_handler_counter event_counter;
+    auto event_handler_reg =
+        evt_bus.register_handler<event1>(&event_counter, &event_handler_counter::on_test_event);
+    auto event_handler_reg2 =
+        evt_bus.register_handler<event2>(&event_counter, &event_handler_counter::on_test_event);
+    auto event_handler_reg3 =
+        evt_bus.register_handler<event3>(&event_counter, &event_handler_counter::on_test_event);
+
+    struct conglomerate_handler {
+        void ev1(const event1& evt) { e1 = evt; }
+        void ev2(const event2& evt) { e2 = evt; }
+        void ev3(const event3& evt) { e3 = evt; }
+
+        std::optional<event1> e1;
+        std::optional<event2> e2;
+        std::optional<event3> e3;
+
+        auto combine() -> std::string {
+            REQUIRE(e1.has_value());
+            REQUIRE(e2.has_value());
+            REQUIRE(e3.has_value());
+            std::stringstream oss;
+            oss << e1->id << " " << e1->message << " | " << e2->value << " | " << e3->character;
+            return oss.str();
+        }
+    };
+
+    conglomerate_handler handler;
+    auto registration = evt_bus.register_handler(&handler, &conglomerate_handler::ev1);
+    auto registration2 = evt_bus.register_handler(&handler, &conglomerate_handler::ev2);
+    auto registration3 = evt_bus.register_handler(&handler, &conglomerate_handler::ev3);
+
+    evt_bus.fire_event(event1{1, "Hello"});
+    evt_bus.fire_event(event2{3.14});
+    evt_bus.fire_event(event3{'A'});
+
+    CHECK_EQ(handler.combine(), "1 Hello | 3.14 | A");
+    CHECK_EQ(event_counter.get_count(), 3);
 }

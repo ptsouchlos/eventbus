@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.25)
 
 project(eventbus)
 
@@ -7,7 +7,10 @@ set(CXX_STANDARD_REQUIRED ON)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(CPM)
+
 option(EVENTBUS_BUILD_TESTS "Build unit tests." ON)
+option(EVENTBUS_BUILD_BENCHMARKS "Build benchmarks." OFF)
+option(EVENTBUS_BUILD_EXAMPLES "Build examples" OFF)
 
 # set up warnings interface project to re-use
 include(CompilerWarnings)
@@ -23,6 +26,8 @@ if(EVENTBUS_BUILD_TESTS)
     CPMAddPackage(
         NAME doctest
         GITHUB_REPOSITORY onqtam/doctest
+        # bump CMake version to 3.5
+        GIT_TAG 3a01ec37828affe4c9650004edb5b304fb9d5b75
         VERSION 2.4.11
     )
 
@@ -33,4 +38,11 @@ if(EVENTBUS_BUILD_TESTS)
 endif()
 
 add_subdirectory(eventbus)
-add_subdirectory(demo)
+
+if(EVENTBUS_BUILD_EXAMPLES)
+    add_subdirectory(demo)
+endif()
+
+if(EVENTBUS_BUILD_BENCHMARKS)
+    add_subdirectory(benchmark)
+endif()
