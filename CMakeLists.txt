@@ -27,8 +27,7 @@ if(EVENTBUS_BUILD_TESTS)
         NAME doctest
         GITHUB_REPOSITORY onqtam/doctest
         # bump CMake version to 3.5
-        GIT_TAG 3a01ec37828affe4c9650004edb5b304fb9d5b75
-        VERSION 2.4.11
+        VERSION 2.4.12
     )
 
     # this needs to be in the top level directory
