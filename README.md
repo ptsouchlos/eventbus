@@ -1,6 +1,6 @@
 <p align="center">
   
-<img src="https://socialify.git.ci/DeveloperPaul123/eventbus/image?font=Bitter&forks=1&language=1&logo=https%3A%2F%2Fraw.githubusercontent.com%2FDeveloperPaul123%2Feventbus%2Fdevelop%2Fart%2Fexport%2Fbus_icon.svg&pattern=Circuit%20Board&stargazers=1&theme=Dark" alt="eventbus" width="640" height="320" />
+<img src="https://socialify.git.ci/ptsouchlos/eventbus/image?font=Bitter&forks=1&language=1&logo=https%3A%2F%2Fraw.githubusercontent.com%2Fptsouchlos%2Feventbus%2Fdevelop%2Fart%2Fexport%2Fbus_icon.svg&pattern=Circuit%20Board&stargazers=1&theme=Dark" alt="eventbus" width="640" height="320" />
   
   <br>
   <br>
@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/license-Apache 2.0-blue" alt="License Apache 2.0">
   </a>
   
-  <a href="https://github.com/DeveloperPaul123/eventbus/stargazers">
+  <a href="https://github.com/ptsouchlos/eventbus/stargazers">
     <img src="https://img.shields.io/badge/Say%20Thanks-👍-1EAEDB.svg" alt="Say thanks">
   </a>
   
@@ -17,13 +17,15 @@
     <img alt="Discord" src="https://img.shields.io/discord/652515194572111872">
   </a>
   
-  <a href="https://github.com/DeveloperPaul123/eventbus/actions">
-    <img alt="Windows" src="https://github.com/DeveloperPaul123/eventbus/workflows/Windows/badge.svg">
+  <a href="https://github.com/ptsouchlos/eventbus/actions">
+    <img alt="Windows" src="https://github.com/ptsouchlos/eventbus/workflows/Windows/badge.svg">
   </a>
-  <a href="https://github.com/DeveloperPaul123/eventbus/actions">
-    <img alt="Ubuntu" src="https://github.com/DeveloperPaul123/eventbus/workflows/Ubuntu/badge.svg">
+  <a href="https://github.com/ptsouchlos/eventbus/actions">
+    <img alt="Ubuntu" src="https://github.com/ptsouchlos/eventbus/workflows/Ubuntu/badge.svg">
   </a>
 </p>
+
+> **Note:** The GitHub account for this project was renamed from `DeveloperPaul123` to `ptsouchlos`. Repository ownership and history are unchanged.
 
 ## Overview
 
@@ -119,7 +121,7 @@ dp::event_bus evt_bus;
 evt_bus.fire_event(evt); // all connect handler for the given event type will be fired.
 ````
 
-A complete example can be seen in the [demo](https://github.com/DeveloperPaul123/eventbus/tree/develop/demo) project.
+A complete example can be seen in the [demo](https://github.com/ptsouchlos/eventbus/tree/develop/demo) project.
 
 ## Integration
 
@@ -142,7 +144,7 @@ Alternatively, you can use something like [CPM](https://github.com/TheLartians/C
 ````cmake
 CPMAddPackage(
     NAME eventbus
-    GITHUB_REPOSITORY DeveloperPaul123/eventbus
+    GITHUB_REPOSITORY ptsouchlos/eventbus
     GIT_TAG #053902d63de5529ee65d965f8b1fb0851eceed24 change this to latest commit/release tag
 )
 ````
@@ -162,7 +164,7 @@ The following use cases are not supported:
 
 ## Contributing
 
-If you find an issue with this library please file an [issue](https://github.com/DeveloperPaul123/eventbus/issues). Pull requests are also welcome! Please see the [contribution guidelines](CONTRIBUTING.md) for more information.
+If you find an issue with this library please file an [issue](https://github.com/ptsouchlos/eventbus/issues). Pull requests are also welcome! Please see the [contribution guidelines](CONTRIBUTING.md) for more information.
 
 ## License
 
@@ -170,9 +172,9 @@ The project is licensed under the Apache License Version 2.0. See [LICENSE](LICE
 
 ## Author
 
-| [<img src="https://avatars0.githubusercontent.com/u/6591180?s=460&v=4" width="100"><br><sub>@DeveloperPaul123</sub>](https://github.com/DeveloperPaul123) |
+| [<img src="https://avatars0.githubusercontent.com/u/6591180?s=460&v=4" width="100"><br><sub>@ptsouchlos</sub>](https://github.com/ptsouchlos) |
 |:----:|
 
 ## Contributors
 
-See [here](https://github.com/DeveloperPaul123/eventbus/graphs/contributors) for a list of contributors.
+See [here](https://github.com/ptsouchlos/eventbus/graphs/contributors) for a list of contributors.
