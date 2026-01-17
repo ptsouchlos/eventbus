@@ -17,16 +17,14 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
+        os: [ubuntu-22.04, ubuntu-24.04]
         cpp: [17]
-        version: [9, 10, 11]
+        version: [9, 10, 11, 12]
         include:
-          - os: ubuntu-22.04
-            version: 12
-          - os: ubuntu-20.04
-            version: 7
-          - os: ubuntu-20.04
-            version: 8
+          - os: ubuntu-24.04
+            version: 13
+          - os: ubuntu-24.04
+            version: 14
     env:
       CPP_STANDARD: ${{ matrix.cpp }}
     steps:
@@ -60,12 +58,12 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
+        os: [ubuntu-22.04, ubuntu-24.04]
         cpp: [17]
-        version: [14, 15, 16, 17]
+        version: [14, 15, 16, 17, 18]
         include:
-          - os: ubuntu-22.04
-            version: 18
+          - os: ubuntu-24.04
+            version: 19
     env:
       CPP_STANDARD: ${{ matrix.cpp }}
     steps:
