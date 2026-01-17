@@ -60,10 +60,18 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
         cpp: [17]
-        version: [14, 15, 16, 17, 18]
+        version: [17, 18]
         include:
+          - os: ubuntu-22.04
+            version: 14
+          - os: ubuntu-22.04
+            version: 15
+          - os: ubuntu-22.04
+            version: 16
           - os: ubuntu-24.04
             version: 19
+          - os: ubuntu-24.04
+            version: 20
     env:
       CPP_STANDARD: ${{ matrix.cpp }}
     steps:
